@@ -1,0 +1,372 @@
+# ============================================================
+# Multi-instancia (aliases do subchart spring-boot)
+# Cada bloco abaixo representa uma implantação independente.
+# ============================================================
+
+spring-boot-1:
+  replicaCount: 1
+  image:
+    repository: danieldggomes/springboot-app-daes
+    tag: 1.0.0
+    pullPolicy: Always
+    pullSecrets: []
+  env:
+    APP_ENV: "dev"
+    APP_TEXT: "Instancia 1"
+
+spring-boot-2:
+  replicaCount: 1
+  image:
+    repository: danieldggomes/springboot-app-daes
+    tag: 1.0.0
+    pullPolicy: Always
+    pullSecrets: []
+  env:
+    APP_ENV: "dev"
+    APP_TEXT: "Instancia 2"
+
+spring-boot-3:
+  replicaCount: 1
+  image:
+    repository: danieldggomes/springboot-app-daes
+    tag: 1.0.0
+    pullPolicy: Always
+    pullSecrets: []
+  env:
+    APP_ENV: "dev"
+    APP_TEXT: "Instancia 3"
+
+# ============================================================
+# Valores legados (estrutura de instância única)
+# Mantidos apenas como referência.
+# Em modo multi-instancia, priorize os blocos spring-boot-1/2/3.
+# ============================================================
+
+# ============================================================
+# Application Scaling Configuration
+# ============================================================
+
+# Number of pod replicas created by default.
+# Ignored if HPA is enabled.
+replicaCount: 2
+
+# ------------------------------------------------------------
+# Horizontal Pod Autoscaler (HPA)
+# Creates an HPA resource when enabled.
+# Requires metrics-server installed in the cluster.
+# ------------------------------------------------------------
+hpa:
+  enabled: false
+
+  # Minimum number of replicas when HPA is active.
+  # Should usually match replicaCount.
+  minReplicas: 2
+
+  # Maximum number of replicas allowed by autoscaling.
+  maxReplicas: 6
+
+  # Target average CPU utilization percentage.
+  # Example: 60 means scale when CPU > 60%.
+  cpuUtilization: 60
+
+
+# ============================================================
+# Container Image Configuration
+# ============================================================
+
+image:
+
+  # Container image repository.
+  repository: danieldggomes/springboot-app-daes
+  
+  # Image tag (use fixed tag in production).
+  tag: 1.0.0
+
+  # Image pull policy:
+  # Always | IfNotPresent | Never
+  pullPolicy: Always
+
+  # Optional imagePullSecret for private registries.
+  # Legacy single-secret form.
+  # pullSecret: dtp-registry
+
+  # Preferred form. Each item may be a string or an object with `name`.
+  pullSecrets: []
+
+
+# ============================================================
+# Probes Configuration
+# Used to determine container health.
+# ============================================================
+
+probe:
+
+  # ----------------------------------------------------------
+  # Startup Probe (optional)
+  # Useful for slow-starting applications.
+  # If enabled, liveness/readiness are ignored until it succeeds.
+  # ----------------------------------------------------------
+  # startup:
+  #   httpGet:
+  #     path: /actuator/health
+  #     port: 8080
+  #   initialDelaySeconds: 10
+  #   periodSeconds: 10
+  #   timeoutSeconds: 1
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------
+  # Liveness Probe
+  # Restarts container if it fails repeatedly.
+  # ----------------------------------------------------------
+  liveness:
+    httpGet:
+      path: /healthz
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  # ----------------------------------------------------------
+  # Readiness Probe
+  # Controls if pod receives traffic.
+  # If failing, traffic is stopped but container is not restarted.
+  # ----------------------------------------------------------
+  readiness:
+    httpGet:
+      path: /healthz
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+
+# ============================================================
+# Security Context
+# Ignored if OpenShift SCC overrides it.
+# ============================================================
+
+securityContext:
+
+  # Keep non-root execution enabled.
+  runAsNonRoot: true
+
+  # Leave null by default so platforms like OpenShift can inject
+  # an allowed UID/GID from their security policy (SCC).
+  runAsUser: null
+  runAsGroup: null
+  fsGroup: null
+  readOnlyRootFilesystem: true
+
+
+# ============================================================
+# Resource Requests and Limits
+# Required for HPA to function correctly.
+# ============================================================
+
+requests:
+  cpu: 50m
+  memory: 64Mi
+
+limits:
+  cpu: 200m
+  memory: 128Mi
+
+
+# ============================================================
+# Service Configuration
+# ============================================================
+
+service:
+
+  # Service type:
+  # ClusterIP | NodePort | LoadBalancer
+  # Usually ClusterIP when using ingress/gateway.
+  type: ClusterIP
+
+  # Service port exposed internally.
+  port: 80
+
+  # Container port.
+  targetPort: 8080
+
+
+# ============================================================
+# Application Runtime Configuration
+# ============================================================
+
+env:
+  APP_ENV: "dev"
+  DB_USER: "user"
+
+config:
+  application.properties: |+
+    # Porta da aplicação (default é 8080)
+    server.port=8080
+
+    # Habilita logs no console
+    logging.level.root=INFO
+
+    # Define o nome da aplicação (aparece nos logs)
+    spring.application.name={{ .Values.application_name }}
+
+volumes:
+  sizeLimit: 200Mi
+  medium: Memory
+
+# ============================================================
+# Exposure Configuration
+# Controls how the application is exposed outside the cluster
+# Supported types:
+#   - ingress     → Kubernetes Ingress (nginx, traefik, etc)
+#   - gatewayapi  → Kubernetes Gateway API
+#   - route       → OpenShift Route
+#   - istio       → Istio Gateway + VirtualService
+# ============================================================
+
+exposure:
+
+  # Defines which exposure mechanism will be rendered.
+  # This is the SINGLE source of truth.
+  type: route
+
+  # Public hostname used by all exposure types.
+  # If null, some providers may auto-generate.
+  host: null
+
+  # Public app path used by all exposure types.
+  path: /
+
+  # ==========================================================
+  # TLS Configuration (centralized for all providers)
+  # ==========================================================
+  tls:
+
+    # Enables TLS for the selected exposure type.
+    enabled: true
+
+    # Generic TLS mode.
+    # Mapping depends on exposure.type:
+    #
+    # ingress:
+    #   - Only supports termination (secret-based TLS)
+    #
+    # gatewayapi:
+    #   - Terminate
+    #   - Passthrough
+    #
+    # route (OpenShift):
+    #   - edge
+    #   - passthrough
+    #   - reencrypt
+    #
+    # istio:
+    #   - SIMPLE
+    #   - PASSTHROUGH
+    #   - MUTUAL
+    #
+    mode: edge
+
+    # ----------------------------------------------------------
+    # TLS Secret Management
+    # ----------------------------------------------------------
+    secret:
+
+      # If true, the chart will create a kubernetes.io/tls Secret.
+      # If false, an existing secret must already exist in the namespace.
+      create: false
+
+      # Name of the TLS secret used by:
+      # - Ingress
+      # - Gateway API (Terminate mode)
+      # - Istio (credentialName)
+      # Ignored for OpenShift edge if using built-in router cert.
+      name: spring-app-tls
+
+      # --------------------------------------------------------
+      # cert-manager integration
+      # --------------------------------------------------------
+      certManager:
+
+        # If true, a Certificate resource will be created.
+        # Requires cert-manager installed in the cluster.
+        enabled: false
+
+        # Name of the Issuer or ClusterIssuer
+        issuerName: null
+
+        # Issuer or ClusterIssuer
+        # Valid values:
+        #   - Issuer
+        #   - ClusterIssuer
+        issuerKind: null
+
+      # --------------------------------------------------------
+      # Manual certificate definition
+      # Used only if:
+      #   - secret.create = true
+      #   - certManager.enabled = false
+      #
+      # Values must be provided in PEM format.
+      # They will be base64 encoded automatically.
+      # --------------------------------------------------------
+
+      # Server certificate (PEM format)
+      crt: null
+
+      # Private key (PEM format)
+      key: null
+
+      # Optional CA bundle (PEM format)
+      # Useful for:
+      #   - Self-signed certs
+      #   - Internal corporate CA
+      ca: null
+
+
+  # ==========================================================
+  # Provider Specific Configuration
+  # Only the block matching exposure.type is used.
+  # ==========================================================
+
+  # ----------------------------------------------------------
+  # Kubernetes Ingress Configuration
+  # Used when exposure.type = "ingress"
+  # ----------------------------------------------------------
+  ingress:
+
+    # IngressClass (e.g., nginx, traefik)
+    className: traefik
+
+
+  # ----------------------------------------------------------
+  # Kubernetes Gateway API Configuration
+  # Used when exposure.type = "gatewayapi"
+  # ----------------------------------------------------------
+  gatewayapi:
+
+    # Name of the GatewayClass
+    # Example: traefik, istio, contour
+    gatewayClassName: traefik
+
+
+  # ----------------------------------------------------------
+  # Istio Configuration
+  # Used when exposure.type = "istio"
+  # ----------------------------------------------------------
+  istio:
+
+    # Namespace where the Istio ingress gateway is installed.
+    # If deployLocalGateway: true, set istio.namespace to the same namespace as the application.
+    namespace: daes
+
+    # Name of the ingress gateway workload/service.
+    ingressGatewayName: ingressgateway
+
+    # Deploy a dedicated local ingress gateway in the same namespace as the application.
+    deployLocalGateway: true
