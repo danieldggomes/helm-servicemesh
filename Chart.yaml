@@ -6,15 +6,16 @@ version: 1.0.0
 appVersion: "1.0.0"
 
 dependencies:
-  - name: spring-boot
+  - name: spring-boot-helm-chart
     alias: spring-boot-1
     version: "1.0.31"
     repository: "oci://registry-1.docker.io/danieldggomes"
-  - name: spring-boot
+  - name: spring-boot-helm-chart
     alias: spring-boot-2
     version: "1.0.31"
     repository: "oci://registry-1.docker.io/danieldggomes"
-  - name: spring-boot
+  - name: spring-boot-helm-chart
     alias: spring-boot-3
     version: "1.0.31"
     repository: "oci://registry-1.docker.io/danieldggomes"
+
