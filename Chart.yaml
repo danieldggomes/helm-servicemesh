@@ -9,12 +9,12 @@ dependencies:
   - name: spring-boot
     alias: spring-boot-1
     version: "1.0.31"
-    repository: "oci://registry-1.docker.io/danieldggomes/spring-boot-helm-chart"
+    repository: "oci://registry-1.docker.io/danieldggomes"
   - name: spring-boot
     alias: spring-boot-2
     version: "1.0.31"
-    repository: "oci://registry-1.docker.io/danieldggomes/spring-boot-helm-chart"
+    repository: "oci://registry-1.docker.io/danieldggomes"
   - name: spring-boot
     alias: spring-boot-3
     version: "1.0.31"
-    repository: "oci://registry-1.docker.io/danieldggomes/spring-boot-helm-chart"
+    repository: "oci://registry-1.docker.io/danieldggomes"
